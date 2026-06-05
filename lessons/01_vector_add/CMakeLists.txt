@@ -1,0 +1,3 @@
+add_executable(lesson_01_vector_add vector_add.cu)
+target_include_directories(lesson_01_vector_add PRIVATE ${CMAKE_SOURCE_DIR}/include)
+set_target_properties(lesson_01_vector_add PROPERTIES CUDA_SEPARABLE_COMPILATION ON)

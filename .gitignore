@@ -1,0 +1,79 @@
+# OS/editor local state
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Build outputs and compiled artifacts
+build/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+compile_commands.json
+*.o
+*.obj
+*.so
+*.dylib
+*.dll
+*.a
+*.lib
+*.exe
+*.out
+
+# Python local state
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Local environment and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+*.credentials
+*credentials*.json
+*secret*.json
+*token*.json
+
+# Cloud/tool local config that can contain credentials if copied into the repo
+.aws/
+.azure/
+.config/gcloud/
+.kube/
+wandb/
+mlruns/
+
+# Notebook local state
+.ipynb_checkpoints/
+
+# Generated benchmark/profiler artifacts
+*.csv.tmp
+profiler_reports/*
+!profiler_reports/.gitkeep
+*.ncu-rep
+*.nsys-rep
+*.qdrep
+*.sqlite
+*.db
+*.log
+
+# Large generated model/data artifacts
+*.pt
+*.pth
+*.onnx
+*.bin
+*.npy
+*.npz
+*.tar
+*.tar.gz
+*.zip

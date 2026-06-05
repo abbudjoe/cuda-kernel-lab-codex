@@ -1,0 +1,7 @@
+# Optional project-scoped Codex configuration placeholder.
+# Keep secrets out of this file.
+# See official Codex configuration docs before enabling project-specific settings.
+
+# Example only; uncomment and adjust in your local environment if desired.
+# [tools]
+# web_search = false
