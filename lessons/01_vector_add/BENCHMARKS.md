@@ -2,9 +2,11 @@
 
 Record your results here.
 
-| Date | GPU | CUDA | N | Block size | Time ms | Approx GB/s | Correct | Notes |
-|---|---|---|---:|---:|---:|---:|---|---|
-| YYYY-MM-DD | TBD | TBD | 1,000,000 | 256 | TBD | TBD | yes/no | initial run |
+
+| Date       | GPU | CUDA | N         | Block size | Time ms | Approx GB/s | Correct | Notes       |
+| ---------- | --- | ---- | --------- | ---------- | ------- | ----------- | ------- | ----------- |
+| YYYY-MM-DD | TBD | TBD  | 1,000,000 | 256        | TBD     | TBD         | yes/no  | initial run |
+
 
 ## Claims allowed
 
