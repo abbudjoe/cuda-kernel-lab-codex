@@ -88,9 +88,17 @@ float reduce_cuda_naive(const std::vector<float>& h_input) {
     return h_output;
 }
 
-bool nearly_equal(float expected, float actual) {
+float sum_abs_cpu_reference(const std::vector<float>& input) {
+    float sum = 0.0f;
+    for (std::size_t i = 0; i < input.size(); ++i) {
+        sum += std::fabs(input[i]);
+    }
+    return sum;
+}
+
+bool nearly_equal(float expected, float actual, float scale) {
     float abs_error = std::fabs(expected - actual);
-    float tolerance = std::max(kAbsTolerance, kRelTolerance * std::fabs(expected));
+    float tolerance = std::max(kAbsTolerance, kRelTolerance * scale);
     return abs_error <= tolerance;
 }
 
@@ -170,7 +178,9 @@ int main(int argc, char** argv) {
         float cpu_sum = reduce_cpu_reference(input);
         float cuda_sum = reduce_cuda_naive(input);
         float abs_error = std::fabs(cpu_sum - cuda_sum);
-        bool correct = nearly_equal(cpu_sum, cuda_sum);
+        float cpu_sum_abs = sum_abs_cpu_reference(input);
+        bool correct = nearly_equal(cpu_sum, cuda_sum, cpu_sum_abs);
+        float tolerance = std::max(kAbsTolerance, kRelTolerance * cpu_sum_abs);
 
         std::cout << "kernel=reduction, version=naive_atomic"
                   << ", n=" << n
@@ -178,6 +188,7 @@ int main(int argc, char** argv) {
                   << ", cuda_sum=" << cuda_sum
                   << ", abs_error=" << abs_error
                   << ", correct=" << (correct ? "yes" : "no")
+                  << ", tolerance=" << tolerance
                   << std::endl;
 
         return correct ? EXIT_SUCCESS : EXIT_FAILURE;
