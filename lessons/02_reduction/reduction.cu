@@ -16,8 +16,8 @@
 #include <vector>
 
 constexpr int kBlockSize = 256;
-constexpr float kAbsTolerance = 1e-2f;
-constexpr float kRelTolerance = 1e-5f;
+constexpr float kAbsTolerance = 1e-4f;
+constexpr float kRelTolerance = 1e-7f;
 
 float reduce_cpu_reference(const std::vector<float>& input) {
     // TODO 1:
