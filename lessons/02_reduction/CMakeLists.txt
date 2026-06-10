@@ -1,0 +1,3 @@
+add_executable(lesson_02_reduction reduction.cu)
+target_include_directories(lesson_02_reduction PRIVATE ${CMAKE_SOURCE_DIR}/include)
+set_target_properties(lesson_02_reduction PROPERTIES CUDA_SEPARABLE_COMPILATION ON)

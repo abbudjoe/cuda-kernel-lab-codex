@@ -24,6 +24,7 @@ add_compile_options(
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
 add_subdirectory(lessons/01_vector_add)
+add_subdirectory(lessons/02_reduction)
 
 # Add future lessons as they become executable, for example:
-# add_subdirectory(lessons/02_reduction)
+# add_subdirectory(lessons/03_transpose)
