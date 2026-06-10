@@ -49,6 +49,14 @@ __global__ void reduce_naive_atomic_kernel(const float* input, float* output, st
     // Question to answer before coding:
     //   What race would happen if multiple threads wrote output[0] without
     //   an atomic operation?
+    //   A race would happen if multiple threads wrote output[0]
+    //   without an atomic operation, meaning that output[0] would be overwritten
+    //   multiple times. An atomic operation is needed to ensure that only one thread
+    //   writes to output[0] at a time.
+    std::size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < n) {
+        atomicAdd(output, input[idx]);
+    }
     (void)input;
     (void)output;
     (void)n;
