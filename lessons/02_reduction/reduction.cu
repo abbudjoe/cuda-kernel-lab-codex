@@ -1,12 +1,18 @@
 #include "common/cuda_check.cuh"
+#include "common/cuda_timer.cuh"
 #include "common/vector_utils.hpp"
 
 #include <cuda_runtime.h>
 #include <algorithm>
 #include <cmath>
+#include <chrono>
+#include <ctime>
 #include <cstdlib>
-#include <iostream>
 #include <stdexcept>
+#include <iomanip>
+#include <iostream>
+#include <sstream>
+#include <string>
 #include <vector>
 
 constexpr int kBlockSize = 256;
