@@ -20,7 +20,7 @@ constexpr float kRelTolerance = 1e-7f;
 
 struct ReductionResult {
     float sum;
-    float kernel_reset_ms;
+    float kernel_ms;
     double end_to_end_ms;
 };
 
@@ -39,7 +39,7 @@ __global__ void reduce_naive_atomic_kernel(const float* input, float* output, st
     }
 }
 
-__global__ void reduce_block_partial_kernel(const float* input, float* partial_sums, std::size_t n) {
+__global__ void reduce_block_partial(const float* input, float* partial_sums, std::size_t n) {
     __shared__ float shared[kBlockSize];
 
     int tid = threadIdx.x;
@@ -65,7 +65,10 @@ __global__ void reduce_block_partial_kernel(const float* input, float* partial_s
     }
 }
 
-float reduce_cuda_block_partial_cpu_finish(const std::vector<float>& h_input) {
+ReductionResult reduce_cuda_block_partial_cpu_finish(const std::vector<float>& h_input,
+                                                     int warmup_iters,
+                                                     int timed_iters) {
+    auto end_to_end_start = std::chrono::steady_clock::now();
     float* d_input = nullptr;
     const std::size_t n = h_input.size();
     const std::size_t bytes = n * sizeof(float);
@@ -75,9 +78,20 @@ float reduce_cuda_block_partial_cpu_finish(const std::vector<float>& h_input) {
     CUDA_CHECK(cudaMalloc(&d_partial_sums, grid_size * sizeof(float)));
     CUDA_CHECK(cudaMalloc(&d_input, bytes));
     CUDA_CHECK(cudaMemcpy(d_input, h_input.data(), bytes, cudaMemcpyHostToDevice));
-
-    reduce_block_partial_kernel<<<grid_size, kBlockSize>>>(d_input, d_partial_sums, n);
+    
+    for (int i = 0; i < warmup_iters; ++i) {
+        reduce_block_partial<<<grid_size, kBlockSize>>>(d_input, d_partial_sums, n);
+    }
     CUDA_KERNEL_CHECK();
+
+
+    CudaEventTimer timer;
+    timer.start();
+    for (int i = 0; i < timed_iters; ++i) {
+        reduce_block_partial<<<grid_size, kBlockSize>>>(d_input, d_partial_sums, n);
+    }
+    CUDA_CHECK(cudaGetLastError());
+    float kernel_ms = timer.stop_ms();
 
     std::vector<float> h_partial_sums(grid_size);
     CUDA_CHECK(cudaMemcpy(h_partial_sums.data(), d_partial_sums, grid_size * sizeof(float), cudaMemcpyDeviceToHost));
@@ -86,9 +100,13 @@ float reduce_cuda_block_partial_cpu_finish(const std::vector<float>& h_input) {
     
     CUDA_CHECK(cudaFree(d_input));
     CUDA_CHECK(cudaFree(d_partial_sums));
-    
-    return sum;
+
+    auto end_to_end_stop = std::chrono::steady_clock::now();
+    std::chrono::duration<double, std::milli> end_to_end_ms = end_to_end_stop - end_to_end_start;
+
+    return {sum, kernel_ms / static_cast<float>(timed_iters), end_to_end_ms.count()};
 }
+
 ReductionResult reduce_cuda_naive(const std::vector<float>& h_input,
                                   int warmup_iters,
                                   int timed_iters) {
@@ -201,19 +219,20 @@ void print_benchmark_row(const std::string& date,
                          const ReductionResult& result,
                          bool correct,
                          float abs_error,
-                         float tolerance) {
+                         float tolerance,
+                         const char* notes) {
     std::cout << "| " << date
               << " | " << gpu
               << " | " << cuda
               << " | " << format_count(n)
               << " | " << kBlockSize
-              << " | " << std::fixed << std::setprecision(4) << result.kernel_reset_ms
+              << " | " << std::fixed << std::setprecision(4) << result.kernel_ms
               << " | " << std::fixed << std::setprecision(4) << result.end_to_end_ms
-              << " | " << std::fixed << std::setprecision(4) << approx_input_gbps(n, result.kernel_reset_ms)
+              << " | " << std::fixed << std::setprecision(4) << approx_input_gbps(n, result.kernel_ms)
               << " | " << std::fixed << std::setprecision(6) << abs_error
               << " | " << std::fixed << std::setprecision(6) << tolerance
               << " | " << (correct ? "yes" : "no")
-              << " | naive atomic |\n";
+              << " | " << notes << " |\n";
 }
 
 int main(int argc, char** argv) {
@@ -242,16 +261,18 @@ int main(int argc, char** argv) {
         ReductionResult cuda_result_naive = reduce_cuda_naive(input, warmup_iters, timed_iters);
         float abs_error_naive = std::fabs(cpu_sum - cuda_result_naive.sum);
 
-        float cuda_result_partial_kernel = reduce_cuda_block_partial_cpu_finish(input);
-        float abs_error_partial_kernel = std::fabs(cpu_sum - cuda_result_partial_kernel);
+        ReductionResult cuda_result_partial = reduce_cuda_block_partial_cpu_finish(input, warmup_iters, timed_iters);
+        float abs_error_partial = std::fabs(cpu_sum - cuda_result_partial.sum);
 
         float cpu_sum_abs = sum_abs_cpu_reference(input);
         bool correct_naive = nearly_equal(cpu_sum, cuda_result_naive.sum, cpu_sum_abs);
-        bool correct_partial_kernel = nearly_equal(cpu_sum, cuda_result_partial_kernel, cpu_sum_abs);
+        bool correct_partial = nearly_equal(cpu_sum, cuda_result_partial.sum, cpu_sum_abs);
         float tolerance = std::max(kAbsTolerance, kRelTolerance * cpu_sum_abs);
 
-        print_benchmark_row(date, gpu, cuda, n, cuda_result_naive, correct_naive, abs_error_naive, tolerance);
-        all_correct = all_correct && correct_naive && correct_partial_kernel;
+        print_benchmark_row(date, gpu, cuda, n, cuda_result_naive, correct_naive, abs_error_naive, tolerance, "naive atomic, reset included");
+        print_benchmark_row(date, gpu, cuda, n, cuda_result_partial, correct_partial, abs_error_partial, tolerance, "block partial + CPU finish");
+        all_correct = all_correct && correct_naive && correct_partial;
+
 
         if (!correct_naive) {
             std::cerr << "Correctness check failed for n=" << n
@@ -262,12 +283,15 @@ int main(int argc, char** argv) {
                       << std::endl;
         }
 
-        std::cout << "check=block_partial_cpu_finish"
+        if (!correct_partial) {
+            std::cout << "check=block_partial_cpu_finish"
                   << ", n=" << n
-                  << ", cuda_sum=" << cuda_result_partial_kernel
-                  << ", abs_error=" << abs_error_partial_kernel
-                  << ", correct=" << (correct_partial_kernel ? "yes" : "no")
+                  << ", cuda_sum=" << cuda_result_partial.sum
+                  << ", abs_error=" << abs_error_partial
+                  << ", correct=" << (correct_partial ? "yes" : "no")
                   << std::endl;
+        }
+        
     }
 
     return all_correct ? EXIT_SUCCESS : EXIT_FAILURE;
