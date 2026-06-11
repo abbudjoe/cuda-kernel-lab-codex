@@ -56,3 +56,5 @@ The block partial + CPU finish version is much faster for large inputs because i
 For N=10,000,000 on a Colab Tesla T4, kernel timing improved from 19.8054 ms for the naive atomic version to 0.3805 ms for block partial + CPU finish under this harness. This is not a complete production reduction because the final partial-sum reduction is done on CPU, but it demonstrates the benefit of reducing within blocks before writing global results.
 
 Caveat: The benchmark's `Approx input GB/s` counts only input bytes, not all atomic read-modify-write traffic or partial-sum copy overhead.
+
+Caveat: This is not a fastest-known reduction. It is a staged optimization that replaces one global atomic per input with one partial sum per block, demonstrating why reducing contention improves performance.
