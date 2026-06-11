@@ -48,3 +48,11 @@ The tolerance needs to scale with sum(abs(input)) rather than only abs(cpu_sum) 
 Implemented `reduce_block_partial_kernel`, where each block reduces up to 256 inputs in shared memory and writes one partial sum to `partial_sums[blockIdx.x]`. The host copies partial sums back and finishes the reduction on CPU.
 
 Correctness passed for N = 1, 2, 3, 1,000, 1,000,000, and 10,000,000. The block partial version changes floating-point addition order, so its result can differ slightly from both the CPU reference and the naive atomic result.
+
+## Benchmark Interpretation
+
+The block partial + CPU finish version is much faster for large inputs because it reduces contention. The naive atomic version performs one global atomic update per input element, so many threads serialize on one output address. The block partial version reduces each block in shared memory and writes only one partial sum per block.
+
+For N=10,000,000 on a Colab Tesla T4, kernel timing improved from 19.8054 ms for the naive atomic version to 0.3805 ms for block partial + CPU finish under this harness. This is not a complete production reduction because the final partial-sum reduction is done on CPU, but it demonstrates the benefit of reducing within blocks before writing global results.
+
+Caveat: The benchmark's `Approx input GB/s` counts only input bytes, not all atomic read-modify-write traffic or partial-sum copy overhead.

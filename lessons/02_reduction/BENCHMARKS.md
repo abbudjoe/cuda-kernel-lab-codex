@@ -22,15 +22,6 @@
 | 2026-06-11 | Tesla T4 | 12.8 | 10,000,000 | 256 | 19.8054 | 2188.4688 | 2.0197 | 0.014893 | 0.499940 | yes | naive atomic, reset included |
 | 2026-06-11 | Tesla T4 | 12.8 | 10,000,000 | 256 | 0.3805 | 52.1039 | 105.1254 | 0.070801 | 0.499940 | yes | block partial + CPU finish |
 
-
-## Benchmark Interpretation
-
-The block partial + CPU finish version is much faster for large inputs because it reduces contention. The naive atomic version performs one global atomic update per input element, so many threads serialize on one output address. The block partial version reduces each block in shared memory and writes only one partial sum per block.
-
-For N=10,000,000 on a Colab Tesla T4, kernel timing improved from 19.8054 ms for the naive atomic version to 0.3805 ms for block partial + CPU finish under this harness. This is not a complete production reduction because the final partial-sum reduction is done on CPU, but it demonstrates the benefit of reducing within blocks before writing global results.
-
-Caveat: The benchmark's `Approx input GB/s` counts only input bytes, not all atomic read-modify-write traffic or partial-sum copy overhead.
-
 ## Timing Scope
 
 - `Kernel+reset ms` uses CUDA event timing around each timed iteration's `cudaMemset(d_output, 0)` plus the reduction kernel launch. The reset is included because each reduction requires a fresh zero output scalar.
