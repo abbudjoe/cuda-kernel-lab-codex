@@ -114,7 +114,7 @@ ReductionResult reduce_cuda_multipass(const std::vector<float>& h_input,
     CUDA_CHECK(cudaFree(d_scratch_a));
     CUDA_CHECK(cudaFree(d_scratch_b));
 
-    return {h_output, 0.0f, 0.0}
+    return {h_output, 0.0f, 0.0};
 }
 
 ReductionResult reduce_cuda_block_partial_cpu_finish(const std::vector<float>& h_input,
