@@ -81,11 +81,12 @@ ReductionResult reduce_cuda_multipass(const std::vector<float>& h_input,
     CUDA_CHECK(cudaMalloc(&d_input, bytes));
     CUDA_CHECK(cudaMemcpy(d_input, h_input.data(), bytes, cudaMemcpyHostToDevice));
 
-
     float* current_input = d_input;
     std::size_t current_n = n;
     float* current_output = d_scratch_a;
-
+    
+    CudaEventTimer timer;
+    timer.start();
     while (current_n > 1) {
         int blocks = static_cast<int>((current_n + kBlockSize - 1) / kBlockSize);
 
@@ -110,11 +111,16 @@ ReductionResult reduce_cuda_multipass(const std::vector<float>& h_input,
     float h_output = 0.0f;
     
     CUDA_CHECK(cudaMemcpy(&h_output, current_input, sizeof(float), cudaMemcpyDeviceToHost));
+    float kernel_ms = timer.stop_ms();
+
     CUDA_CHECK(cudaFree(d_input));
     CUDA_CHECK(cudaFree(d_scratch_a));
     CUDA_CHECK(cudaFree(d_scratch_b));
 
-    return {h_output, 0.0f, 0.0};
+    auto end_to_end_stop = std::chrono::steady_clock::now();
+    std::chrono::duration<double, std::milli> end_to_end_ms = end_to_end_stop - end_to_end_start;
+
+    return {h_output, kernel_ms / static_cast<float>(timed_iters), end_to_end_ms.count()};
 }
 
 ReductionResult reduce_cuda_block_partial_cpu_finish(const std::vector<float>& h_input,
@@ -357,8 +363,6 @@ int main(int argc, char** argv) {
                       << ", correct=" << (correct_multipass ? "yes" : "no")
                       << std::endl;
         }
-
-
     }
 
     return all_correct ? EXIT_SUCCESS : EXIT_FAILURE;
