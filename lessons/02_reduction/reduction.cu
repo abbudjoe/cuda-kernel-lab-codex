@@ -65,6 +65,58 @@ __global__ void reduce_block_partial(const float* input, float* partial_sums, st
     }
 }
 
+ReductionResult reduce_cuda_multipass(const std::vector<float>& h_input, 
+                                      int warmup_iters, 
+                                      int timed_iters) {
+    auto end_to_end_start = std::chrono::steady_clock::now();
+    float* d_input = nullptr;
+    const std::size_t n = h_input.size();
+    const std::size_t bytes = n * sizeof(float);
+    const int max_blocks = static_cast<int>((n + kBlockSize - 1) / kBlockSize);
+    float* d_scratch_a = nullptr;
+    float* d_scratch_b = nullptr;
+
+    CUDA_CHECK(cudaMalloc(&d_scratch_a, max_blocks * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&d_scratch_b, max_blocks * sizeof(float)));
+    CUDA_CHECK(cudaMalloc(&d_input, bytes));
+    CUDA_CHECK(cudaMemcpy(d_input, h_input.data(), bytes, cudaMemcpyHostToDevice));
+
+
+    float* current_input = d_input;
+    std::size_t current_n = n;
+    float* current_output = d_scratch_a;
+
+    while (current_n > 1) {
+        int blocks = static_cast<int>((current_n + kBlockSize - 1) / kBlockSize);
+
+        reduce_block_partial<<<blocks, kBlockSize>>>(
+            current_input,
+            current_output, 
+            current_n
+        );
+
+        current_n = blocks;
+
+        current_input = current_output;
+        
+        if (current_output == d_scratch_a) {
+            current_output = d_scratch_b;
+        } else {
+            current_output = d_scratch_a;
+        }
+    }
+    CUDA_KERNEL_CHECK();
+
+    float h_output = 0.0f;
+    
+    CUDA_CHECK(cudaMemcpy(&h_output, current_input, sizeof(float), cudaMemcpyDeviceToHost));
+    CUDA_CHECK(cudaFree(d_input));
+    CUDA_CHECK(cudaFree(d_scratch_a));
+    CUDA_CHECK(cudaFree(d_scratch_b));
+
+    return {h_output, 0.0f, 0.0}
+}
+
 ReductionResult reduce_cuda_block_partial_cpu_finish(const std::vector<float>& h_input,
                                                      int warmup_iters,
                                                      int timed_iters) {
@@ -264,14 +316,19 @@ int main(int argc, char** argv) {
         ReductionResult cuda_result_partial = reduce_cuda_block_partial_cpu_finish(input, warmup_iters, timed_iters);
         float abs_error_partial = std::fabs(cpu_sum - cuda_result_partial.sum);
 
+        ReductionResult cuda_result_multipass = reduce_cuda_multipass(input, warmup_iters, timed_iters);
+        float abs_error_multipass = std::fabs(cpu_sum - cuda_result_multipass.sum);
+
         float cpu_sum_abs = sum_abs_cpu_reference(input);
         bool correct_naive = nearly_equal(cpu_sum, cuda_result_naive.sum, cpu_sum_abs);
         bool correct_partial = nearly_equal(cpu_sum, cuda_result_partial.sum, cpu_sum_abs);
+        bool correct_multipass = nearly_equal(cpu_sum, cuda_result_multipass.sum, cpu_sum_abs);
+
         float tolerance = std::max(kAbsTolerance, kRelTolerance * cpu_sum_abs);
 
         print_benchmark_row(date, gpu, cuda, n, cuda_result_naive, correct_naive, abs_error_naive, tolerance, "naive atomic, reset included");
         print_benchmark_row(date, gpu, cuda, n, cuda_result_partial, correct_partial, abs_error_partial, tolerance, "block partial + CPU finish");
-        all_correct = all_correct && correct_naive && correct_partial;
+        all_correct = all_correct && correct_naive && correct_partial && correct_multipass;
 
 
         if (!correct_naive) {
@@ -292,6 +349,13 @@ int main(int argc, char** argv) {
                   << std::endl;
         }
         
+        std::cout << "check=block_partial_cpu_finish"
+                  << ", n=" << n
+                  << ", cuda_sum=" << cuda_result_multipass.sum
+                  << ", abs_error=" << abs_error_multipass
+                  << ", correct=" << (correct_multipass ? "yes" : "no")
+                  << std::endl;
+
     }
 
     return all_correct ? EXIT_SUCCESS : EXIT_FAILURE;
