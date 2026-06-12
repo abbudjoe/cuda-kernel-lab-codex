@@ -328,8 +328,8 @@ int main(int argc, char** argv) {
 
         print_benchmark_row(date, gpu, cuda, n, cuda_result_naive, correct_naive, abs_error_naive, tolerance, "naive atomic, reset included");
         print_benchmark_row(date, gpu, cuda, n, cuda_result_partial, correct_partial, abs_error_partial, tolerance, "block partial + CPU finish");
+        print_benchmark_row(date, gpu, cuda, n, cuda_result_multipass, correct_multipass, abs_error_multipass, tolerance, "multipass");
         all_correct = all_correct && correct_naive && correct_partial && correct_multipass;
-
 
         if (!correct_naive) {
             std::cerr << "Correctness check failed for n=" << n
@@ -349,12 +349,15 @@ int main(int argc, char** argv) {
                   << std::endl;
         }
         
-        std::cout << "check=block_multipass"
-                  << ", n=" << n
-                  << ", cuda_sum=" << cuda_result_multipass.sum
-                  << ", abs_error=" << abs_error_multipass
-                  << ", correct=" << (correct_multipass ? "yes" : "no")
-                  << std::endl;
+        if (!correct_multipass) {
+            std::cout << "check=block_multipass"
+                      << ", n=" << n
+                      << ", cuda_sum=" << cuda_result_multipass.sum
+                      << ", abs_error=" << abs_error_multipass
+                      << ", correct=" << (correct_multipass ? "yes" : "no")
+                      << std::endl;
+        }
+
 
     }
 
