@@ -349,7 +349,7 @@ int main(int argc, char** argv) {
                   << std::endl;
         }
         
-        std::cout << "check=block_partial_cpu_finish"
+        std::cout << "check=block_multipass"
                   << ", n=" << n
                   << ", cuda_sum=" << cuda_result_multipass.sum
                   << ", abs_error=" << abs_error_multipass
