@@ -81,6 +81,10 @@ ReductionResult reduce_cuda_multipass(const std::vector<float>& h_input,
     CUDA_CHECK(cudaMalloc(&d_input, bytes));
     CUDA_CHECK(cudaMemcpy(d_input, h_input.data(), bytes, cudaMemcpyHostToDevice));
 
+    float* current_input = d_input;
+    std::size_t current_n = n;
+    float* current_output = d_scratch_a;
+
     for (int i = 0; i < warmup_iters; ++i) {
         float* current_input = d_input;
         std::size_t current_n = n;
