@@ -136,7 +136,7 @@ ReductionResult reduce_cuda_multipass(const std::vector<float>& h_input,
 
     float h_output = 0.0f;
     
-    CUDA_CHECK(cudaMemcpy(&h_output, current_input, sizeof(float), cudaMemcpyDeviceToHost));
+    CUDA_CHECK(cudaMemcpy(&h_output, final_output, sizeof(float), cudaMemcpyDeviceToHost));
     float kernel_ms = timer.stop_ms();
 
     CUDA_CHECK(cudaFree(d_input));
