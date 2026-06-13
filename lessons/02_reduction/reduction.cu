@@ -81,14 +81,12 @@ ReductionResult reduce_cuda_multipass(const std::vector<float>& h_input,
     CUDA_CHECK(cudaMalloc(&d_input, bytes));
     CUDA_CHECK(cudaMemcpy(d_input, h_input.data(), bytes, cudaMemcpyHostToDevice));
 
-    float* current_input = d_input;
-    std::size_t current_n = n;
-    float* current_output = d_scratch_a;
-
+    const float* final_output = d_input;
     for (int i = 0; i < warmup_iters; ++i) {
-        current_input = d_input;
-        current_n = n;
-        current_output = d_scratch_a;
+        
+        float* current_input = d_input;
+        std::size_t current_n = n;
+        float* current_output = d_scratch_a;
 
         while (current_n > 1) {
             int blocks = static_cast<int>((current_n + kBlockSize - 1) / kBlockSize);
@@ -103,20 +101,18 @@ ReductionResult reduce_cuda_multipass(const std::vector<float>& h_input,
     
             current_input = current_output;
             
-            if (current_output == d_scratch_a) {
-                current_output = d_scratch_b;
-            } else {
-                current_output = d_scratch_a;
-            }
+            current_output = (current_output == d_scratch_a) ? d_scratch_b : d_scratch_a;
         }
+
     }
     
     CudaEventTimer timer;
     timer.start();
     for (int i = 0; i < warmup_iters; ++i) {
-        current_input = d_input;
-        current_n = n;
-        current_output = d_scratch_a;
+        
+        float* current_input = d_input;
+        std::size_t current_n = n;
+        float* current_output = d_scratch_a;
 
         while (current_n > 1) {
             int blocks = static_cast<int>((current_n + kBlockSize - 1) / kBlockSize);
@@ -131,13 +127,11 @@ ReductionResult reduce_cuda_multipass(const std::vector<float>& h_input,
     
             current_input = current_output;
             
-            if (current_output == d_scratch_a) {
-                current_output = d_scratch_b;
-            } else {
-                current_output = d_scratch_a;
-            }
+            current_output = (current_output == d_scratch_a) ? d_scratch_b : d_scratch_a;
         }
+        final_output = current_input;
     }
+    
     CUDA_CHECK(cudaGetLastError());
 
     float h_output = 0.0f;
