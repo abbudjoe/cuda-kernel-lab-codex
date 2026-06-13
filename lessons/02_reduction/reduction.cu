@@ -86,9 +86,9 @@ ReductionResult reduce_cuda_multipass(const std::vector<float>& h_input,
     float* current_output = d_scratch_a;
 
     for (int i = 0; i < warmup_iters; ++i) {
-        float* current_input = d_input;
-        std::size_t current_n = n;
-        float* current_output = d_scratch_a;
+        current_input = d_input;
+        current_n = n;
+        current_output = d_scratch_a;
 
         while (current_n > 1) {
             int blocks = static_cast<int>((current_n + kBlockSize - 1) / kBlockSize);
@@ -114,9 +114,9 @@ ReductionResult reduce_cuda_multipass(const std::vector<float>& h_input,
     CudaEventTimer timer;
     timer.start();
     for (int i = 0; i < warmup_iters; ++i) {
-        float* current_input = d_input;
-        std::size_t current_n = n;
-        float* current_output = d_scratch_a;
+        current_input = d_input;
+        current_n = n;
+        current_output = d_scratch_a;
 
         while (current_n > 1) {
             int blocks = static_cast<int>((current_n + kBlockSize - 1) / kBlockSize);
