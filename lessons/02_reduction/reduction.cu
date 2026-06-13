@@ -134,7 +134,7 @@ ReductionResult reduce_cuda_multipass(const std::vector<float>& h_input,
             }
         }
     }
-    CUDA_KERNEL_CHECK(cudaGetLastError());
+    CUDA_CHECK(cudaGetLastError());
 
     float h_output = 0.0f;
     
