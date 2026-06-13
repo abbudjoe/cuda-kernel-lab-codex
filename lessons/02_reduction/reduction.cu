@@ -108,7 +108,7 @@ ReductionResult reduce_cuda_multipass(const std::vector<float>& h_input,
     
     CudaEventTimer timer;
     timer.start();
-    for (int i = 0; i < warmup_iters; ++i) {
+    for (int i = 0; i < timed_iters; ++i) {
         
         float* current_input = d_input;
         std::size_t current_n = n;
@@ -133,12 +133,10 @@ ReductionResult reduce_cuda_multipass(const std::vector<float>& h_input,
     }
     
     CUDA_CHECK(cudaGetLastError());
-
-    float h_output = 0.0f;
-    
-    CUDA_CHECK(cudaMemcpy(&h_output, final_output, sizeof(float), cudaMemcpyDeviceToHost));
     float kernel_ms = timer.stop_ms();
-
+    
+    float h_output = 0.0f;
+    CUDA_CHECK(cudaMemcpy(&h_output, final_output, sizeof(float), cudaMemcpyDeviceToHost));
     CUDA_CHECK(cudaFree(d_input));
     CUDA_CHECK(cudaFree(d_scratch_a));
     CUDA_CHECK(cudaFree(d_scratch_b));
